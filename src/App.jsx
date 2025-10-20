@@ -14,6 +14,17 @@ function App() {
   const [showStats, setShowStats] = useState(false)
   const [currentWordIndex, setCurrentWordIndex] = useState(0)
   const [completedWords, setCompletedWords] = useState([])
+  const [shuffledWords, setShuffledWords] = useState([])
+
+  // 🔀 Sekoitusfunktio (Fisher–Yates)
+  const shuffleArray = (array) => {
+    const shuffled = [...array]
+    for (let i = shuffled.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1))
+      ;[shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]]
+    }
+    return shuffled
+  }
 
   // Kuuntele tilastot-painiketta
   useEffect(() => {
@@ -24,6 +35,12 @@ function App() {
 
   const handleStartLearning = () => {
     if (selectedVocab) {
+      const currentVocab = vocabularyData.vocabularies.find(v => v.id === selectedVocab)
+
+      // 🔀 Sekoita sanat ennen oppimisen aloitusta
+      const mixed = shuffleArray(currentVocab.words)
+      setShuffledWords(mixed)
+
       setIsLearning(true)
       setShowResults(false)
       setCurrentWordIndex(0)
@@ -32,8 +49,7 @@ function App() {
   }
 
   const handleAnswer = (knew) => {
-    const currentVocab = vocabularyData.vocabularies.find(v => v.id === selectedVocab)
-    const currentWord = currentVocab.words[currentWordIndex]
+    const currentWord = shuffledWords[currentWordIndex]
     
     const updatedCompleted = [...completedWords, { word: currentWord, knew }]
     setCompletedWords(updatedCompleted)
@@ -42,7 +58,7 @@ function App() {
     saveProgress(selectedVocab, { completedWords: updatedCompleted })
 
     // Siirry seuraavaan sanaan tai näytä tulokset
-    if (currentWordIndex < currentVocab.words.length - 1) {
+    if (currentWordIndex < shuffledWords.length - 1) {
       setCurrentWordIndex(currentWordIndex + 1)
     } else {
       // Tallenna oppimisputki
@@ -61,9 +77,14 @@ function App() {
     setSelectedVocab(null)
     setCurrentWordIndex(0)
     setCompletedWords([])
+    setShuffledWords([])
   }
 
   const handleRestart = () => {
+    // 🔁 Sekoita sanat uudelleen
+    const mixed = shuffleArray(shuffledWords)
+    setShuffledWords(mixed)
+
     setCurrentWordIndex(0)
     setCompletedWords([])
     setShowResults(false)
@@ -82,11 +103,10 @@ function App() {
 
   // Tulosnäkymä
   if (showResults) {
-    const currentVocab = vocabularyData.vocabularies.find(v => v.id === selectedVocab)
     return (
       <ResultsView
         results={completedWords}
-        totalWords={currentVocab.words.length}
+        totalWords={shuffledWords.length}
         onRestart={handleRestart}
         onBackToMenu={handleBackToMenu}
       />
@@ -95,8 +115,7 @@ function App() {
 
   // Oppiminen käynnissä
   if (isLearning) {
-    const currentVocab = vocabularyData.vocabularies.find(v => v.id === selectedVocab)
-    const currentWord = currentVocab.words[currentWordIndex]
+    const currentWord = shuffledWords[currentWordIndex]
 
     return (
       <FlashCard
@@ -105,7 +124,7 @@ function App() {
         onAnswer={handleAnswer}
         progress={{
           current: currentWordIndex + 1,
-          total: currentVocab.words.length
+          total: shuffledWords.length
         }}
       />
     )
